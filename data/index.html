@@ -1,0 +1,211 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ESP32 Dashboard</title>
+  <link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+  <header>
+    <div class="brand">ESP32 Pilot Bench <span class="chip">SPIFFS</span></div>
+    <nav role="tablist" aria-label="Pages">
+      <button class="tab-btn" role="tab" id="tab-home" aria-controls="panel-home" aria-selected="true">Home</button>
+      <button class="tab-btn" role="tab" id="tab-live" aria-controls="panel-live" aria-selected="false">Live</button>
+      <button class="tab-btn" role="tab" id="tab-analysis" aria-controls="panel-analysis" aria-selected="false">Analysis</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- Home -->
+    <section id="panel-home" class="tab-panel" role="tabpanel" aria-labelledby="tab-home" aria-hidden="false">
+      <div class="grid">
+        <div class="card">
+          <h2 style="margin:0 0 8px 0;">Welcome</h2>
+          <p class="muted">See the <b>Live</b> tab for realtime charts, throttle test, and thrust test.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Live -->
+    <section id="panel-live" class="tab-panel" role="tabpanel" aria-labelledby="tab-live" aria-hidden="true">
+      <div class="grid">
+        <!-- project meta (editable) -->
+        <div class="card meta-card" style="grid-column: span 12; position:relative;">
+          <div id="meta-view">
+            <div class="meta-grid">
+              <div class="kvp"><span class="k">MOTOR BRAND</span><span class="v" id="m-brand">—</span></div>
+              <div class="kvp"><span class="k">MOTOR</span><span class="v" id="m-motor">—</span></div>
+              <div class="kvp"><span class="k">KV</span><span class="v" id="m-kv">—</span></div>
+              <div class="kvp"><span class="k">PROPELLER</span><span class="v" id="m-prop">—</span></div>
+            </div>
+            <div class="meta-desc" id="m-desc">—</div>
+          </div>
+
+          <div id="meta-editing" hidden>
+            <div class="meta-grid">
+              <label class="k">MOTOR BRAND<input id="mi-brand" class="txt-input" placeholder=""></label>
+              <label class="k">MOTOR<input id="mi-motor" class="txt-input" placeholder=""></label>
+              <label class="k">KV<input id="mi-kv" class="txt-input" placeholder=""></label>
+              <label class="k">PROPELLER<input id="mi-prop" class="txt-input" placeholder=""></label>
+            </div>
+            <label class="k" style="display:block; margin-top:10px;">DESCRIPTION</label>
+            <textarea id="mi-desc" class="txt-area" rows="3" placeholder=""></textarea>
+            <div class="meta-actions">
+              <button id="meta-save" class="btn">Save</button>
+              <button id="meta-cancel" class="btn" style="margin-left:8px;">Cancel</button>
+            </div>
+          </div>
+
+          <button id="meta-edit" class="btn edit-floating" title="Edit" aria-label="Edit">Edit</button>
+          <div id="meta-toast" class="toast" hidden></div>
+        </div>
+        <!-- charts -->
+        <div class="card chart">
+          <h3><span>Voltage vs Time</span><span class="meta" id="v-last">–</span></h3>
+          <canvas id="voltage"></canvas>
+        </div>
+        <div class="card chart">
+          <h3><span>Current vs Time</span><span class="meta" id="i-last">–</span></h3>
+          <canvas id="current"></canvas>
+        </div>
+        <div class="card chart">
+          <h3><span>Power vs Time</span><span class="meta" id="p-last">–</span></h3>
+          <canvas id="power"></canvas>
+        </div>
+        <div class="card chart">
+          <h3><span>Load (kg) vs Time</span><span class="meta" id="l-last">–</span></h3>
+          <canvas id="load"></canvas>
+        </div>
+
+        <!-- throttle test -->
+        <div class="card" style="grid-column: span 12;">
+          <h2 style="margin:0 0 10px 0;">Throttle Test</h2>
+          <div class="controls">
+            <label for="throttle" class="lbl">Throttle</label>
+            <input id="throttle" type="range" min="0" max="100" step="1" value="0" />
+            <div class="val"><span id="throttle-val">0</span>%</div>
+            <button id="arm-btn" class="btn btn-arm" aria-pressed="false">Arm</button>
+          </div>
+          <p class="muted" id="arm-hint">Set a value, then press <b>Arm</b>. Press again to <b>Disarm</b> (sends 0%).</p>
+          <div id="arm-toast" class="toast" hidden></div>
+        </div>
+
+        <!-- thrust test -->
+        <div class="card" style="grid-column: span 12;">
+          <h2 style="margin:0 0 10px 0;">Thrust Test</h2>
+
+          <!-- row 1: target slider -->
+          <div class="controls" style="margin-bottom:10px;">
+            <label for="thrust" class="lbl">Target</label>
+            <input id="thrust" type="range" min="0" max="100" step="10" value="0" />
+            <div class="val"><span id="thrust-val">0</span>%</div>
+
+            <button id="start-test-btn" class="btn">Start Test</button>
+          </div>
+
+          <!-- row 2: logging step + ramp time -->
+          <div class="controls" style="grid-template-columns: 120px 140px 120px 140px;">
+            <label for="log-step" class="lbl">Log step</label>
+            <input id="log-step" type="number" min="0.1" max="5" step="0.1" value="0.5" />
+            <label for="ramp-time" class="lbl">Ramp time</label>
+            <input id="ramp-time" type="number" min="0.5" max="120" step="0.5" value="10" />
+          </div>
+
+          <div id="test-toast" class="toast" hidden></div>
+          <p class="muted" style="margin-top:8px;">
+            Logs every <code>step</code> seconds. Ramps 0 → target over <code>ramp time</code> seconds.
+          </p>
+        </div>
+
+        <!-- info -->
+        <div class="card" style="grid-column: span 12;">
+          <h3 style="margin-bottom:4px;">Endpoints</h3>
+          <ol class="muted" style="margin:6px 0 0 18px;">
+            <li><code>/api/live</code> → JSON (ts, v, i, kg)</li>
+            <li><code>/api/set_throttle</code> (POST pct=0..100)</li>
+            <li><code>/api/start_thrust_test</code> (POST pct=.., step_s=..)</li>
+            <li><code>/api/test_status</code> → JSON {running, done, samples, target, step_s}</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+    <!-- Analysis -->
+<section id="panel-analysis" class="tab-panel" role="tabpanel" aria-labelledby="tab-analysis" aria-hidden="true">
+  <div class="grid" id="analysis-list-view" style="grid-column: span 12;">
+    <div class="card" style="grid-column: span 12;">
+      <h2 style="margin:0 0 10px 0;">Test Results</h2>
+      <div id="log-list" class="log-list"></div>
+      <div id="log-list-toast" class="toast" hidden></div>
+    </div>
+  </div>
+
+  <div class="grid" id="analysis-viewer" style="display:none;">
+    <div class="card" style="grid-column: span 12; display:flex; align-items:center; justify-content:space-between;">
+      <div>
+        <button id="an-back" class="btn">&larr; Back</button>
+        <span id="an-title" class="muted" style="margin-left:10px;"></span>
+      </div>
+      <a id="an-download" class="btn" href="#" download>Download CSV</a>
+    </div>
+
+    <div class="card" id="an-meta-card" style="grid-column: span 12;">
+    <div class="an-meta-grid">
+      <div><div class="lbl">Motor Brand</div><div id="an-mbrand" class="val">—</div></div>
+      <div><div class="lbl">Motor</div><div id="an-motor" class="val">—</div></div>
+      <div><div class="lbl">KV</div><div id="an-kv" class="val">—</div></div>
+      <div><div class="lbl">Propeller</div><div id="an-prop" class="val">—</div></div>
+      <div><div class="lbl">Recommended ESC</div><div id="an-esc" class="val">—</div></div>
+    </div>
+    <div class="lbl" style="margin-top:8px;">Description</div>
+    <pre id="an-desc" class="meta-desc">—</pre>
+  </div>
+
+    <!-- 4 customizable graph tiles -->
+    <div class="card chart analysis-chart">
+      <div class="chart-head">
+        <div class="sel-wrap">
+          <label>X <select class="sel-x" data-idx="0"></select></label>
+          <label>Y <select class="sel-y" data-idx="0"></select></label>
+        </div>
+      </div>
+      <canvas id="an-g0"></canvas><div class="tip" id="an-tip0"></div>
+    </div>
+
+    <div class="card chart analysis-chart">
+      <div class="chart-head">
+        <div class="sel-wrap">
+          <label>X <select class="sel-x" data-idx="1"></select></label>
+          <label>Y <select class="sel-y" data-idx="1"></select></label>
+        </div>
+      </div>
+      <canvas id="an-g1"></canvas><div class="tip" id="an-tip1"></div>
+    </div>
+
+    <div class="card chart analysis-chart">
+      <div class="chart-head">
+        <div class="sel-wrap">
+          <label>X <select class="sel-x" data-idx="2"></select></label>
+          <label>Y <select class="sel-y" data-idx="2"></select></label>
+        </div>
+      </div>
+      <canvas id="an-g2"></canvas><div class="tip" id="an-tip2"></div>
+    </div>
+
+    <div class="card chart analysis-chart">
+      <div class="chart-head">
+        <div class="sel-wrap">
+          <label>X <select class="sel-x" data-idx="3"></select></label>
+          <label>Y <select class="sel-y" data-idx="3"></select></label>
+        </div>
+      </div>
+      <canvas id="an-g3"></canvas><div class="tip" id="an-tip3"></div>
+    </div>
+  </div>
+</section>
+
+  </main>
+
+  <script src="/assets/app.js?v=5"></script>
+</body>
+</html>
