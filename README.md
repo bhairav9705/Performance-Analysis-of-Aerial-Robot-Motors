@@ -1,6 +1,6 @@
 # ThrustBench — UAV Motor Thrust Measurement System
 
-> An IoT-enabled, real-time thrust and performance measurement rig for Brushless DC (BLDC) motors used in aerial robots (UAVs/drones), built on the ESP32 microcontroller with a web-based dashboard.
+> A= real-time performance measurement rig for Brushless DC (BLDC) motors used in aerial robots (UAVs/drones), built on the ESP32 microcontroller with a web-based dashboard.
 
 ---
 
